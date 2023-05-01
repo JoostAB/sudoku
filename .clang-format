@@ -1,0 +1,11 @@
+BasedOnStyle: LLVM
+AlignAfterOpenBracket: true
+
+AlignConsecutiveMacros: AcrossEmptyLines
+
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+
+ColumnLimit: 120

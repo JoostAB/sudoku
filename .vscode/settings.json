@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "*.stp": "sql",
+    "*.tbl": "sql",
+    "*.trg": "sql",
+    "*.rul": "sql",
+    "time.h": "c",
+    "stdlib.h": "c",
+    "stdbool.h": "c"
+  }
+}
