@@ -197,7 +197,11 @@ void getInput() {
     if (c == '0') {
       y = 0;
     } else {
-      y = (c - 97) + 1;
+      if (c >= 'a') {
+        y = (c - 'a') + 1;
+      } else {
+        y = (c - 'A') + 1;
+      }
     }
   #else
   printf("Enter row, column and value to solve sudoku (e.g., '2 4 6', or '0 0 0' to exit):\n");
