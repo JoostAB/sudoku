@@ -8,7 +8,7 @@
 #define DEBUG 1
 #define GS 9 // GridSize
 #define EMPTY 0
-//#define ROWLETTERS 1
+#define ROWLETTERS 1
 
 int grid[GS][GS];
 
@@ -162,8 +162,8 @@ bool usedInBox(int v, int x, int y) {
 }
 
 void printGrid() {
-  printf("\n  1 2 3   4 5 6   7 8 9 \n");
-  printf(" -----------------------\n");
+  printf("\n   1 2 3   4 5 6   7 8 9 \n");
+  printf(" +-------+-------+-------+\n");
   for (int y = 0; y < GS; y++) {
     #ifdef ROWLETTERS
     printf("%c|", y + 97);  // Row letters
@@ -183,18 +183,34 @@ void printGrid() {
     }
     printf("\n");
     if ((y + 1) % 3 == 0) {
-      printf(" -----------------------\n");
+      printf(" +-------+-------+-------+\n");
     }
   }
 }
 
 void getInput() {
-  printf("Enter row, column and value to solve sudoku (e.g., '2 4 6', or '0 0 0' to exit):\n");
   int x, y, v;
+  #ifdef ROWLETTERS
+  printf("Enter col, row and value to solve sudoku (e.g., '2 a 6', or '0 0 0' to exit):\n");
+  char c;
+  while (scanf("%d %c %d", &x, &c, &v) == 3) {
+    if (c == '0') {
+      y = 0;
+    } else {
+      y = (c - 97) + 1;
+    }
+  #else
+  printf("Enter row, column and value to solve sudoku (e.g., '2 4 6', or '0 0 0' to exit):\n");
   while (scanf("%d %d %d", &x, &y, &v) == 3) {
+  #endif
     if (x == 0 && y == 0 && v == 0) {
-      solve(0,0);
-      printGrid();
+      if (solve(0,0) == 1) {
+        printGrid();
+        printf("SOLVED!!!\n");
+      } else {
+        printf("No Valid solution found...\n");
+      }
+
       break;
     }
     if (x < 1 || x > GS || y < 1 || y > GS || v < 1 || v > GS) {
