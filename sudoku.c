@@ -11,7 +11,7 @@
 #define ROWLETTERS 1
 
 int grid[GS][GS];
-
+int lvl = 5;
 int createSudoku();
 void clearField();
 int solve(int x, int y);
@@ -23,12 +23,20 @@ void removeDigits(int num);
 void shuffle(int arr[], int length);
 void printGrid();
 void getInput();
+bool restart();
 
 int main() {
   srand(time(NULL));
+  /*
   createSudoku();
   printGrid();
   getInput();
+  */
+  while (restart()) {
+    createSudoku();
+    printGrid();
+    getInput();
+  }
   return 1;
 }
 
@@ -102,7 +110,7 @@ int createSudoku() {
   // Fill with a valid combination of digits
   solve(0,0);
   // Remove some to create a puzzle
-  removeDigits(50);
+  removeDigits(lvl * 10);
   return 1;
 }
 
@@ -236,4 +244,35 @@ void getInput() {
     grid[x][y] = v;
     printGrid();
   }
+}
+
+bool restart() {
+  static bool isFirst = true;
+  
+  if (isFirst) {
+    printf("Welcome to Sudoku!\n");
+    isFirst = false;
+  } else {
+    printf("Do you want to play another game? (y/n)\n");
+    char c;
+    while (scanf("%c", &c) == 1) {
+      if (c == 'n' || c == 'N') {
+        printf("Ok, maybe next time. Bye!\n");
+        return false;
+      }
+      break;
+    }
+  }
+  
+1  printf("Enter level 1-5 (1 = easy, 5 = hard)\n");
+  char l;
+  while (scanf("%c", &l) == 1) {
+    if (l < '1' || l > '5') {
+      printf("Not a valid level. Please enter a level from 1 to 5\n");
+      continue;
+    }
+    lvl = l - '0';
+    break;
+  }
+  return true;
 }
