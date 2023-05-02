@@ -10,6 +10,14 @@
 #define EMPTY 0
 #define ROWLETTERS 1
 
+enum State {
+  START = 1,
+  CREATE = 2,
+  DISPLAY = 3,
+  SOLVE = 4,
+  QUIT = 99
+} state = START;
+
 void createSudoku();
 void clearField();
 void removeDigits(int num);
@@ -22,20 +30,28 @@ bool usedInRow(int v, int x, int y);
 bool usedInCol(int v, int x, int y);
 bool usedInBox(int v, int x, int y);
 bool restart();
+bool loop();
 
 int grid[GS][GS];
 int lvl = 5;
 
+
 int main() {
   
-  while (restart()) {
-    srand(time(NULL));
+  while (loop()) {}
+
+  return EXIT_SUCCESS;
+}
+
+bool loop() {
+  if (restart()) {
     createSudoku();
     printGrid();
     getInput();
+    return true;
+  } else {
+    return false;
   }
-
-  return EXIT_SUCCESS;
 }
 
 void shuffle(int arr[], int length) {
@@ -272,5 +288,6 @@ bool restart() {
     lvl = l - '0';
     break;
   }
+  srand(time(NULL));
   return true;
 }
