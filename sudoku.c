@@ -264,7 +264,7 @@ bool restart() {
     }
   }
   
-1  printf("Enter level 1-5 (1 = easy, 5 = hard)\n");
+  printf("Enter level 1-5 (1 = easy, 5 = hard)\n");
   char l;
   while (scanf("%c", &l) == 1) {
     if (l < '1' || l > '5') {
