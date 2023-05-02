@@ -10,34 +10,32 @@
 #define EMPTY 0
 #define ROWLETTERS 1
 
-int grid[GS][GS];
-int lvl = 5;
-int createSudoku();
+void createSudoku();
 void clearField();
-int solve(int x, int y);
-bool isValid(int v, int x, int y);
-bool usedInRow(int v, int x, int y);
-bool usedInCol(int v, int x, int y);
-bool usedInBox(int v, int x, int y);
 void removeDigits(int num);
 void shuffle(int arr[], int length);
 void printGrid();
 void getInput();
+bool solve(int x, int y);
+bool isValid(int v, int x, int y);
+bool usedInRow(int v, int x, int y);
+bool usedInCol(int v, int x, int y);
+bool usedInBox(int v, int x, int y);
 bool restart();
 
+int grid[GS][GS];
+int lvl = 5;
+
 int main() {
-  srand(time(NULL));
-  /*
-  createSudoku();
-  printGrid();
-  getInput();
-  */
+  
   while (restart()) {
+    srand(time(NULL));
     createSudoku();
     printGrid();
     getInput();
   }
-  return 1;
+
+  return EXIT_SUCCESS;
 }
 
 void shuffle(int arr[], int length) {
@@ -57,13 +55,13 @@ void shuffle(int arr[], int length) {
  * 
  * @param x 
  * @param y 
- * @return int 0 = success, 1 = no solution found
+ * @return int 1 = success, 0 = no solution found
  */
-int solve(int x, int y) {
+bool solve(int x, int y) {
   int d[] = {1,2,3,4,5,6,7,8,9};
   if (x == GS && y == GS - 1) {
     // reached the end, puzzle solved
-    return 1;
+    return true;
   }
 
   if (x >= GS) {
@@ -86,7 +84,7 @@ int solve(int x, int y) {
       grid[x][y] = v;
       if (solve(x + 1,y)) {
         // YES! Did it!
-        return 1;
+        return true;
       } else {
         // Nope, not a valid value
         grid[x][y] = EMPTY;
@@ -96,22 +94,20 @@ int solve(int x, int y) {
   }
   
   // No valid value found for this field, so we have an impossible situation.
-  return 0;
+  return false;
 }
 
 /**
  * @brief Create a Sudoku puzzle
  * 
- * @return int 
  */
-int createSudoku() {
+void createSudoku() {
   // Clear the field
   clearField();
   // Fill with a valid combination of digits
   solve(0,0);
   // Remove some to create a puzzle
   removeDigits(lvl * 10);
-  return 1;
 }
 
 void clearField() {
@@ -216,19 +212,21 @@ void getInput() {
   while (scanf("%d %d %d", &x, &y, &v) == 3) {
   #endif
     if (x == 0 && y == 0 && v == 0) {
+      // 0 0 0 ENtered, so try to solve game
       if (solve(0,0) == 1) {
         printGrid();
         printf("SOLVED!!!\n");
       } else {
         printf("No Valid solution found...\n");
       }
-
       break;
     }
+
     if (x < 1 || x > GS || y < 1 || y > GS || v < 1 || v > GS) {
       printf("Invalid input. Please enter row, column, and value between 1 and 9:\n");
       continue;
     }
+
     x--;
     y--;
     if (grid[x][y] != EMPTY) {
