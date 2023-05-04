@@ -211,7 +211,7 @@ void printGrid() {
     printf("%c ║", y + 'A');  // Row letters
     for (int x = 0; x < GS; x++) {
       if (grid[x][y] == EMPTY) {
-        printf("   ");
+        printf(" · ");
       } else {
         printf(" %d ", grid[x][y]);
       }
