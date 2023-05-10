@@ -4,8 +4,8 @@
     "*.tbl": "sql",
     "*.trg": "sql",
     "*.rul": "sql",
-    "time.h": "c",
-    "stdlib.h": "c",
-    "stdbool.h": "c"
+    "*.h": "c",
+    "*.c": "c",
+    "*.cpp": "c"
   }
 }

@@ -4,49 +4,90 @@
 #include <stdlib.h>
 #include <time.h>
 #include <windows.h>
+#include <conio.h>
 
 #define DEBUG        1
 #define GS           9 // GridSize
 #define EMPTY        0
+#define INP_LENGTH   20
+#define LINE_LENGTH  70
 
-#define clear()      printf("\033[H\033[J")
-#define gotoxy(x, y) printf("\033[%d;%dH", (y), (x))
+#define clear()      printf("\e[H\033[J")
+#define gotoxy(x, y) printf("\e[%d;%dH", (y), (x))
 
 const int statusLine = 1;
 const int infoLine = 16;
 const int inputLine = infoLine + 1;
 
-bool screenNeedsUpdate = true;
+enum State { 
+  NOSTATE,
+  START,
+  STARTING,
+  CREATE,
+  PLAY,
+  SOLVE, 
+  SOLVED,
+  QUIT} state = START;
 
-enum State { START = 1, CREATE = 2, DISPLAY = 3, SOLVE = 4, QUIT = 99 } state = START;
-
-void createSudoku();
-void clearField();
+/* Display functions */
 void clearLine(int line);
-void removeDigits(int num);
+void removeDigits(int n);
+void setStatus(const char* s);
+void setInfo(const char* i);
 void writeLine(const char *txt, int line);
-void shuffle(int arr[], int length);
-void printGrid();
 void updateScreen();
-void getInput();
-bool solve(int x, int y);
-bool isValid(int v, int x, int y);
-bool usedInRow(int v, int x, int y);
-bool usedInCol(int v, int x, int y);
-bool usedInBox(int v, int x, int y);
-bool restart();
+
+/* Input handling */
+void scanInput();
+void handleInput();
+
+/* Game logic */
+void clearField();
+void shuffle(int arr[], int length);
+bool solvePuzzle();
+bool isValid(int x, int y, int v);
+bool usedInRow(int x, int y, int v);
+bool usedInCol(int x, int y, int v);
+bool usedInBox(int x, int y, int v);
+bool checkForWin();
+bool setValue(int x, int y, int v);
+void startGame();
+bool doMove();
+
+/* Misc */
 void loop();
+
+/* Update flags */
+bool inpChanged = false;
+bool inpEntered = false;
+bool statusChanged = false;
+bool infoChanged = false;
+bool screenChanged = true;
 
 int grid[GS][GS];
 int lvl = 0;
+
+const char* doMoveText = "Enter next move in Row-Column-Value (eg 1a2 or 6g4)";
+
+/* String buffers */
+char status[LINE_LENGTH];
+char info[LINE_LENGTH];
+char input[INP_LENGTH];
+int inpPos = 0;
+
 
 int main() {
   // Force console to UTF-8 codepage to proper display field
   SetConsoleOutputCP(CP_UTF8);
 
+  // Clear the screen...
   clear();
-  createSudoku();
-  void clearField();
+  
+  // ... and initialize the grid to all empty fields
+  clearField();
+
+  setStatus("Welcome to Soduku");
+
   while (state != QUIT) {
     loop();
   }
@@ -55,13 +96,31 @@ int main() {
 }
 
 void loop() {
-  if (restart()) {
-    createSudoku();
-    printGrid();
-    getInput();
-
-  } else {
-    state = QUIT;
+  updateScreen();
+  scanInput();
+  handleInput();
+  switch (state) {
+    case START: {
+        startGame();
+        break;
+      }
+    case CREATE: {
+        if (solvePuzzle()) {
+          removeDigits(lvl * 10);
+          state = PLAY;
+          setInfo(doMoveText);
+        }
+        break;
+      }
+    case PLAY:
+      // Nothing special here... Just handle input (already done)
+      break;
+    case SOLVE:
+      solvePuzzle();
+      break;
+    default:
+      // Just continue the loop
+      break;
   }
 }
 
@@ -75,90 +134,88 @@ void shuffle(int arr[], int length) {
 }
 
 /**
- * @brief Solves the puzzle
+ * @brief @brief Solves the puzzle
  *
  * Recursive method to solve the puzzle. Finds the first possible number for the current cell. If it finds a number it
  * goes on to the next cell to check if the puzzle can be solved with this value. If not, it tries the next number.
  *
- * @param x
- * @param y
- * @return int 1 = success, 0 = no solution found
+ * @return true If the puzzle is solved
+ * @return false Not possible to solve current situation
  */
-bool solve(int x, int y) {
-  int d[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  if (x == GS && y == GS - 1) {
-    // reached the end, puzzle solved
-    return true;
-  }
+bool solvePuzzle() {
+  static int c = 0;
 
-  if (x >= GS) {
-    // End of row, go to next row
-    y++;
-    x = 0;
+  int x = c % GS;
+  int y = c / GS;
+  c++;
+
+  if (c > (GS*GS)) {
+    // Puzzle is solved
+    // Reset cell counter
+    c = 0;
+    state = SOLVED;
+    return true;
   }
 
   if (grid[x][y] > EMPTY) {
     // Current field already set, solve next
-    return solve(x + 1, y);
+    return solvePuzzle();
   }
 
   // We got an empty field, now lets find a valid value
+  // Randomize the sequence of digits to test
+  int d[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   shuffle(d, GS);
+
   for (int i = 0; i < GS; i++) {
     int v = d[i];
-    if (isValid(v, x, y)) {
-      // Set this valid value and see if we can solve the puzzle
-      grid[x][y] = v;
-      if (solve(x + 1, y)) {
-        // YES! Did it!
-        return true;
-      } else {
-        // Nope, not a valid value
-        grid[x][y] = EMPTY;
-      }
-    }
+
+    // See if we can set the currect digit
+    if (!setValue(x,y,v)) continue;
+
+    // It was a valid move, now let's see if we can solve the puzzle with this digit
+    if (solvePuzzle()) return true;
+
+    // Nope. Set it to empty and try the next digit
+    c--;
+    setValue(x,y,EMPTY);  
   }
 
   // No valid value found for this field, so we have an impossible situation.
+  c--;
   return false;
 }
 
-/**
- * @brief Create a Sudoku puzzle
- *
- */
-void createSudoku() {
-  // Clear the field
-  clearField();
-  // Fill with a valid combination of digits
-  solve(0, 0);
-  // Remove some to create a puzzle
-  removeDigits(lvl * 10);
-}
-
+// Set all cells to EMPTY
 void clearField() {
   for (int x = 0; x < GS; x++) {
     for (int y = 0; y < GS; y++) {
       grid[x][y] = EMPTY;
     }
   }
+  screenChanged = true;
 }
 
-void removeDigits(int num) {
+// Set n cells randomly to EMPTY
+void removeDigits(int n) {
   int x, y;
-  while (num > 0) {
+  while (n > 0) {
     x = rand() % GS;
     y = rand() % GS;
     if (grid[x][y] != EMPTY) {
       grid[x][y] = EMPTY;
-      num--;
+      n--;
     }
   }
 }
 
-bool isValid(int v, int x, int y) { return (!usedInRow(v, x, y) && !usedInCol(v, x, y) && !usedInBox(v, x, y)); }
+bool isValid(int x, int y, int v) { 
+  return (!usedInRow(x, y, v) && 
+          !usedInCol(x, y, v) && 
+          !usedInBox(x, y, v)); }
 
-bool usedInRow(int v, int x, int y) {
+bool usedInRow(int x, int y, int v) {
+  if (v == EMPTY) return false;
   for (int i = 0; i < GS; i++) {
     if (grid[i][y] == v)
       return true;
@@ -166,7 +223,8 @@ bool usedInRow(int v, int x, int y) {
   return false;
 }
 
-bool usedInCol(int v, int x, int y) {
+bool usedInCol(int x, int y, int v) {
+  if (v == EMPTY) return false;
   for (int i = 0; i < GS; i++) {
     if (grid[x][i] == v)
       return true;
@@ -174,7 +232,9 @@ bool usedInCol(int v, int x, int y) {
   return false;
 }
 
-bool usedInBox(int v, int x, int y) {
+bool usedInBox(int x, int y, int v) {
+  if (v == EMPTY) return false;
+
   int boxSize = GS / 3;
   int xStart = x - x % (boxSize);
   int xEnd = xStart + boxSize;
@@ -200,159 +260,25 @@ void clearLine(int line) {
   for (int i = 0; i < 80; i++)
     putchar(' ');
   gotoxy(0, line);
+  //printf("\e2K");
 }
 
-void printGrid() {
-
-  gotoxy(1, 2);
-  printf("    1  2  3   4  5  6   7  8  9            \n");
-  printf("  ╔═════════╤═════════╤═════════╗          \n");
-  for (int y = 0; y < GS; y++) {
-    printf("%c ║", y + 'A'); // Row letters
-    for (int x = 0; x < GS; x++) {
-      if (grid[x][y] == EMPTY) {
-        printf("   ");
-      } else {
-        printf(" %d ", grid[x][y]);
-      }
-      if ((x + 1) % 3 == 0) {
-        if ((x + 1) == GS) {
-          printf("║");
-        } else {
-          printf("│");
-        }
-      }
-    }
-    printf("          \n");
-    if ((y + 1) % 3 == 0) {
-      if ((y + 1) == GS) {
-        printf("  ╚═════════╧═════════╧═════════╝          \n");
-      } else {
-        printf("  ╟─────────┼─────────┼─────────╢          \n");
-      }
-    }
-  }
-}
-
-void getInput() {
-  int x, y, v;
-  writeLine("Enter col, row and value to solve sudoku (e.g., '2 a 6', or '0 0 0' to exit):", infoLine);
-  clearLine(inputLine);
-  char c;
-  while (scanf("%d %c %d", &x, &c, &v) == 3) {
-    if (c == '0') {
-      y = 0;
-    } else {
-      if (c >= 'a') {
-        y = (c - 'a') + 1;
-      } else {
-        y = (c - 'A') + 1;
-      }
-    }
-    if (x == 0 && y == 0 && v == 0) {
-      // 0 0 0 Entered, so try to solve game
-      if (solve(0, 0) == 1) {
-        printGrid();
-        writeLine("SOLVED!!!", statusLine);
-      } else {
-        writeLine("No Valid solution found...", statusLine);
-      }
-      break;
-    }
-
-    if (x < 1 || x > GS || y < 1 || y > GS || v < 1 || v > GS) {
-      writeLine("Invalid input. Please enter row, column, and value between 1 and 9:", infoLine);
-      clearLine(inputLine);
-      continue;
-    }
-
-    x--;
-    y--;
-    if (grid[x][y] != EMPTY) {
-      writeLine("Cannot change given value. Please choose an empty cell:", infoLine);
-      clearLine(inputLine);
-      continue;
-    }
-
-    if (isValid(v, x, y)) {
-      grid[x][y] = v;
-      printGrid();
-      clearLine(inputLine);
-    } else {
-      writeLine("Illegal value at this location", infoLine);
-      clearLine(inputLine);
-    }
-  }
-}
-
-bool restart() {
-  static bool isFirst = true;
-
-  if (isFirst) {
-    clearField();
-    printGrid();
-    gotoxy(1, statusLine);
-    printf("Welcome to Sudoku!\n");
-    isFirst = false;
-  } else {
-    writeLine("Do you want to play another game? (y/n)", infoLine);
-    clearLine(inputLine);
-    char c;
-    while (scanf("%c", &c) == 1) {
-      gotoxy(1, inputLine);
-      if (c == '\n' || c == '\r')
-        continue;
-      if (c == 'n' || c == 'N') {
-        printf("Ok, maybe next time. Bye!\n");
-        return false;
-      }
-      break;
-    }
-  }
-
-  writeLine("Enter level 1-5 (1 = easy, 5 = hard)", infoLine);
-  clearLine(inputLine);
-  char l;
-  while (scanf("%c", &l) == 1) {
-    if (l == '\n' || l == '\r')
-      continue;
-    if (l < '1' || l > '5') {
-      writeLine("Not a valid level. Please enter a level from 1 to 5", infoLine);
-      clearLine(inputLine);
-      continue;
-    }
-    lvl = l - '0';
-    break;
-  }
-  srand(time(NULL));
+bool setValue(int x, int y, int v) {
+  //if ((grid[x][y] != EMPTY) || !isValid(x,y,v)) return false;
+  if ((v != EMPTY) && ((grid[x][y] != EMPTY) || !isValid(x, y, v))) return false;
+    
+  grid[x][y] = v;
+  screenChanged = true;
   return true;
 }
 
-int main_new() {
-  // Force console to UTF-8 codepage to proper display field
-  SetConsoleOutputCP(CP_UTF8);
-
-  clear();
-  void clearField();
-  while (state != QUIT) {
-    loop_new();
+bool checkForWin() {
+  for (int x = 0; x < GS; x++) {
+    for (int y = 0; y < GS; y++) {
+      if (grid[x][y] == EMPTY) return false;
+    }
   }
-
-  return EXIT_SUCCESS;
-}
-
-void loop_new() {
-  updateScreen();
-  switch (state) {
-  case START:
-    /* code */
-    break;
-  case CREATE:
-  case DISPLAY:
-  case SOLVE:
-  default:
-    break;
-  }
+  return true;
 }
 
 
@@ -361,28 +287,50 @@ void updateScreen() {
   static int y = -1;
   static int line = 2;
 
-  if (!screenNeedsUpdate)
+  if (statusChanged) {
+    statusChanged = false;
+    gotoxy(1,statusLine);
+    printf(status);
+  }
+
+  if (infoChanged) {
+    infoChanged = false;
+    gotoxy(1,infoLine);
+    printf(info);
+  }
+
+  if (inpChanged) {
+    inpChanged = false;
+    gotoxy(1,inputLine);
+    printf(input);
+  }
+
+  if (!screenChanged)
     return;
 
+  // Using color codes. For more info see:
+  // https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#color-codes
   switch (y) {
   case -1:
     line = 2;
     gotoxy(1, line);
-    printf("    1  2  3   4  5  6   7  8  9            \n");
+    //printf("\e[1m    1  2  3   4  5  6   7  8  9            \e[0m\n");
+    printf("\e[1;33m    1  2  3   4  5  6   7  8  9            \e[0m\n");
     printf("  ╔═════════╤═════════╤═════════╗          \n");
     line = line + 2;
     break;
   case (GS):
     gotoxy(1, line);
     printf("  ╚═════════╧═════════╧═════════╝          \n");
-    screenNeedsUpdate = false;
+    screenChanged = false;
+    line = 2;
     break;
   default:
     gotoxy(1, line);
-    printf("%c ║", y + 'A'); // Row letters
+    printf("\e[1;33m%c\e[0m ║", y + 'A'); // Row letters
     for (int x = 0; x < GS; x++) {
       if (grid[x][y] == EMPTY) {
-        printf(" · ");
+        printf("\e[2m · \e[0m"); // Dim dot to indicate empty field
       } else {
         printf(" %d ", grid[x][y]);
       }
@@ -405,5 +353,135 @@ void updateScreen() {
     break;
   }
 
-  y = screenNeedsUpdate? y+1 : 0;
+  y = screenChanged? y+1 : -1;
+}
+
+bool isHotKey(char c) {
+  switch (c)
+  {
+  case '\n':
+  case '\r':
+    inpEntered = true;
+    break;
+  case 'H':
+    setStatus("Hello world");
+    break;
+  case 'Q':
+    state = QUIT;
+    break;
+  default:
+    // No hotkey
+    return false;
+  }
+  return true;
+}
+
+void scanInput() {
+  gotoxy(inpPos + 1, inputLine);
+  if (_kbhit()) {
+    char ch = _getch();
+    if (!isHotKey(ch)) {
+      input[inpPos] = ch;
+      input[inpPos + 1] = '\0';
+      if (inpPos < (INP_LENGTH - 2)) inpPos ++;
+    }
+    inpChanged = true;
+  }
+}
+
+void handleInput() {
+  if (!inpEntered) return;
+  bool handled = false;
+  
+  if (strcmp(input,"quit") == 0) {
+    state = QUIT;
+    handled = true;
+  } else if (strcmp(input,"solve") == 0) {
+    state = SOLVE;
+    handled = true;
+  } else if (strcmp(input,"restart") == 0) {
+    state = START;
+    handled = true;
+  }
+
+  if (!handled) {
+    switch (state) {
+      case (STARTING): 
+      {
+        char i = input[0];
+        if (i < 49 || i > 53) {
+          setInfo("Illegal value. Please enter a level from 1 - 5.");
+          handled = true;
+        } else {
+          lvl = i - 48;
+          handled = true;
+          state = CREATE;
+        }
+        break;
+      }
+      case (PLAY):
+      {
+        if (strlen(input) == 3) {
+          if ((input[0] >= '1' && input[0] <= '9') &&
+              (input[1] >= 'a' && input[1] <= 'i') &&
+              (input[2] >= '1' && input[2] <= '9')) {
+                doMove();
+                handled = true;
+              }
+        }
+        break;
+      }
+    }
+  }
+
+  if (!handled) {
+    // Unknown command...
+    setInfo("Unknown command at this stage");
+    handled = true;
+  }
+  // if (handled) {
+    inpEntered = false;
+    input[0] = '\0';
+    inpPos = 0;
+    clearLine(inputLine);
+    return;
+  //}
+}
+
+void setStatus(const char* s) {
+  memset(status,' ',LINE_LENGTH);
+  status[LINE_LENGTH-1] = '\0';
+  memcpy(status, s, strlen(s));
+  
+  statusChanged = true;
+}
+
+void setInfo(const char* i) {
+  memset(info,' ',LINE_LENGTH);
+  info[LINE_LENGTH-1] = '\0';
+  memcpy(info, i, strlen(i));
+  
+  infoChanged = true;
+}
+
+void startGame() {
+  clearField();
+  srand(time(0));
+  setInfo("Enter level 1-5 (1 = easy, 5 = hard)");
+  state = STARTING;
+}
+
+bool doMove() {
+  
+  if ((strlen(input) == 3) &&
+      (input[0] >= '1' && input[0] <= '9') &&
+      (input[1] >= 'a' && input[1] <= 'i') &&
+      (input[2] >= '1' && input[2] <= '9')) {
+        int x = input[0] - '1';
+        int y = input[1] - 'a';
+        int v = input[2] - '0';
+        setValue(x,y,v);
+        return true;
+      }
+  return false;
 }
