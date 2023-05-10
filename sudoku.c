@@ -6,7 +6,6 @@
 #include <windows.h>
 #include <conio.h>
 
-#define DEBUG        1
 #define GS           9 // GridSize
 #define EMPTY        0
 #define INP_LENGTH   20
@@ -29,29 +28,181 @@ enum State {
   SOLVED,
   QUIT} state = START;
 
+/*********************/
 /* Display functions */
+/*********************/
+
+/**
+ * @brief Clear a line on the display
+ * 
+ * Actually fills the line with 80 spaces
+ * 
+ * @param line 
+ */
 void clearLine(int line);
+
+/**
+ * @brief Set n digits on the field to EMPTY
+ * 
+ * It will search for n NON-EMPTY fields. So there MUST be at least
+ * n fields filled, otherwise this will result in an endless loop!
+ * FIXME: See above
+ * 
+ * @param n 
+ */
 void removeDigits(int n);
+
+/**
+ * @brief Set the Status message. Will be displayed in next loop run
+ * 
+ * @param s 
+ */
 void setStatus(const char* s);
+
+/**
+ * @brief Set the Info message. Will be displayed in next loop run
+ * 
+ * @param i 
+ */
 void setInfo(const char* i);
+
+/**
+ * @brief Write a line on the console.
+ * 
+ * @param txt 
+ * @param line 
+ */
 void writeLine(const char *txt, int line);
+
+/**
+ * @brief Full screen update. Everything that is changed will be rewritten to the console.
+ * 
+ */
 void updateScreen();
 
+/******************/
 /* Input handling */
+/******************/
+
+/**
+ * @brief Check if there is anything on the keyboard buffer.
+ * If so, handle it. If Enter is pressed, handleInput is called
+ * 
+ */
 void scanInput();
+
+/**
+ * @brief Handle any input
+ * 
+ * 
+ */
 void handleInput();
 
+/**
+ * @brief Clear the input buffer
+ * 
+ */
+void resetInput();
+
+/**************/
 /* Game logic */
+/**************/
+
+/**
+ * @brief Set all cells to EMPTY
+ * 
+ */
 void clearField();
-void shuffle(int arr[], int length);
+
+/**
+ * @brief Shuffle the elements of an int array
+ * 
+ * @param arr Pointer to the array
+ * @param length Length of the array
+ */
+void shuffle(int* arr, int length);
+
+/**
+ * @brief Solves the puzzle
+ *
+ * Recursive method to solve the puzzle. Finds the first possible number for the current cell. If it finds a number it
+ * goes on to the next cell to check if the puzzle can be solved with this value. If not, it tries the next number.
+ *
+ * @return true If the puzzle is solved
+ * @return false Not possible to solve current situation
+ */
 bool solvePuzzle();
+
+/**
+ * @brief Checks if a given value is valid on the given coordinated
+ * 
+ * @param x 
+ * @param y 
+ * @param v - Value
+ * @return true or false
+ */
 bool isValid(int x, int y, int v);
+
+/**
+ * @brief Checks if a given value is already used on the current row (y)
+ * 
+ * @param x 
+ * @param y 
+ * @param v 
+ * @return true or false 
+ */
 bool usedInRow(int x, int y, int v);
+
+/**
+ * @brief Checks if a given value is already used on the current column (x)
+ * 
+ * @param x 
+ * @param y 
+ * @param v 
+ * @return true or false 
+ */
 bool usedInCol(int x, int y, int v);
+
+/**
+ * @brief Checks if a given value is already used on the current 3x3 box
+ * 
+ * @param x 
+ * @param y 
+ * @param v 
+ * @return true or false 
+ */
 bool usedInBox(int x, int y, int v);
+
+/**
+ * @brief Checks if all cells are filled
+ * 
+ * @return true or false 
+ */
 bool checkForWin();
+
+/**
+ * @brief Set the passed value to the passed coordinates, but only if that is a valid move.
+ * 
+ * @param x 
+ * @param y 
+ * @param v 
+ * @return true Valid move, value set
+ * @return false Was not valid
+ */
 bool setValue(int x, int y, int v);
+
+/**
+ * @brief Start the game. Reset field, ask for level and create puzzle
+ * 
+ */
 void startGame();
+
+/**
+ * @brief Do the move after all needed checks. Then check for win
+ * 
+ * @return true Valid move, done
+ * @return false Invalid move
+ */
 bool doMove();
 
 /* Misc */
@@ -92,6 +243,10 @@ int main() {
     loop();
   }
 
+  setInfo("Bye bye!!!");
+  gotoxy(1,infoLine);
+  printf(info);
+
   return EXIT_SUCCESS;
 }
 
@@ -124,7 +279,7 @@ void loop() {
   }
 }
 
-void shuffle(int arr[], int length) {
+void shuffle(int* arr, int length) {
   for (int i = 0; i < length; i++) {
     int si = rand() % length;
     int tmp = arr[i];
@@ -133,15 +288,7 @@ void shuffle(int arr[], int length) {
   }
 }
 
-/**
- * @brief @brief Solves the puzzle
- *
- * Recursive method to solve the puzzle. Finds the first possible number for the current cell. If it finds a number it
- * goes on to the next cell to check if the puzzle can be solved with this value. If not, it tries the next number.
- *
- * @return true If the puzzle is solved
- * @return false Not possible to solve current situation
- */
+
 bool solvePuzzle() {
   static int c = 0;
 
@@ -264,8 +411,17 @@ void clearLine(int line) {
 }
 
 bool setValue(int x, int y, int v) {
-  //if ((grid[x][y] != EMPTY) || !isValid(x,y,v)) return false;
-  if ((v != EMPTY) && ((grid[x][y] != EMPTY) || !isValid(x, y, v))) return false;
+  if (v != EMPTY) {
+    if (grid[x][y] != EMPTY) {
+      if (state == PLAY) setInfo("Cell is not empty. Choose a free cell.");
+      return false;
+    }
+
+    if (!isValid(x, y, v)) {
+      if (state == PLAY) setInfo("Invalid value for cell. Choose another");
+      return false;
+    }
+  }
     
   grid[x][y] = v;
   screenChanged = true;
@@ -353,6 +509,24 @@ void updateScreen() {
     break;
   }
 
+  switch (line-1) {
+    case 5:
+      gotoxy(40,line-1);
+      printf("Commands:");
+      break;
+    case 7:
+      gotoxy(40,line-1);
+      printf("Q or quit");
+      break;
+    case 8:
+      gotoxy(40,line-1);
+      printf("S or solve");
+      break;
+    case 9:
+      gotoxy(40,line-1);
+      printf("R or restart");
+      break;
+  }
   y = screenChanged? y+1 : -1;
 }
 
@@ -368,6 +542,9 @@ bool isHotKey(char c) {
     break;
   case 'Q':
     state = QUIT;
+    break;
+  case 'R':
+    state = START;
     break;
   default:
     // No hotkey
@@ -439,13 +616,17 @@ void handleInput() {
     setInfo("Unknown command at this stage");
     handled = true;
   }
-  // if (handled) {
-    inpEntered = false;
-    input[0] = '\0';
-    inpPos = 0;
-    clearLine(inputLine);
-    return;
-  //}
+
+  resetInput();
+
+  return;
+}
+
+void resetInput() {
+  inpEntered = false;
+  input[0] = '\0';
+  inpPos = 0;
+  clearLine(inputLine);
 }
 
 void setStatus(const char* s) {
@@ -480,8 +661,15 @@ bool doMove() {
         int x = input[0] - '1';
         int y = input[1] - 'a';
         int v = input[2] - '0';
-        setValue(x,y,v);
-        return true;
+        if (setValue(x,y,v)) {
+          if (checkForWin()) {
+            setInfo("Yes!!! Solved!");
+            state = SOLVED;
+          } else {
+            setInfo(doMoveText);
+          }
+          return true;
+        }
       }
   return false;
 }
