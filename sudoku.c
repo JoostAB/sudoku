@@ -218,7 +218,7 @@ bool screenChanged = true;
 int grid[GS][GS];
 int lvl = 0;
 
-const char* doMoveText = "Enter next move in Row-Column-Value (eg 1a2 or 6g4)";
+const char* doMoveText = "Enter next move in Column-Row-Value format (eg 1a2 or 6g4)";
 
 /* String buffers */
 char status[LINE_LENGTH];
