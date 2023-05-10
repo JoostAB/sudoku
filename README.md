@@ -19,7 +19,7 @@ Generates a sudoku puzzle and lets you solve it by entering coordinates and a va
     H ║ ·  6  · │ 4  7  3 │ ·  ·  2 ║
     I ║ ·  ·  · │ ·  5  · │ 9  ·  · ║
       ╚═════════╧═════════╧═════════╝
-    Enter next move in Row-Column-Value (eg 1a2 or 6g4)
+    Enter next move in Column-Row-Value format (eg 1a2 or 6g4)
 
 
 
