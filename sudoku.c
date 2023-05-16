@@ -10,9 +10,12 @@
 #define EMPTY        0    // Value of an empty cell
 #define INP_LENGTH   20   // Max length of input command
 #define LINE_LENGTH  70   // Max length of text line (info or status)
+#define ERR_FLASH    10
+#define DEF_COLOR    48  // Default color char '0'
 
-#define clear()      printf("\e[H\033[J")           // Clear screen
-#define gotoxy(x, y) printf("\e[%d;%dH", (y), (x))  // Move cursor to location
+#define clear()       printf("\e[H\033[J")           // Clear screen
+#define gotoxy(x, y)  printf("\e[%d;%dH", (y), (x))  // Move cursor to location
+#define xytobox(x, y) ((x/3) + (3*(y/3)))
 
 const int statusLine = 1;           // Line number for status text
 const int infoLine = 16;            // Line number for info text
@@ -80,6 +83,18 @@ void writeLine(const char *txt, int line);
  * 
  */
 void updateScreen();
+
+/**
+ * @brief Handle flashing digits
+ * 
+ */
+void doFlash();
+
+void startFlash(char what, char idx, char color, char count);
+
+void stopFlash();
+
+char getColor(int x, int y);
 
 /******************/
 /* Input handling */
@@ -219,6 +234,16 @@ bool screenChanged = true;
 int grid[GS][GS];
 int lvl = 0;
 
+clock_t flash_tmr;  // Flash timer
+
+// Flash status: 
+// - flash[0] = 0 (off), r (row), c (column) or b (block)
+// - flash[1] = nr of row, column or block
+// - flash[2] = color, r = red, y = yellow
+// - flash[3] = nr of flashes left
+// - flash[4] = current color (0 = no color, default)
+char flash[5] = {'0',0,DEF_COLOR, 0, DEF_COLOR};  	  
+
 const char* doMoveText = "Enter next move in Column-Row-Value format (eg 1a2 or 6g4)";
 
 /* String buffers */
@@ -253,6 +278,7 @@ int main() {
 
 void loop() {
   updateScreen();
+  doFlash();
   scanInput();
   handleInput();
   switch (state) {
@@ -358,15 +384,21 @@ void removeDigits(int n) {
 }
 
 bool isValid(int x, int y, int v) { 
-  return (!usedInRow(x, y, v) && 
+  // return (!usedInRow(x, y, v) && 
+  //         !usedInCol(x, y, v) && 
+  //         !usedInBox(x, y, v)); }
+  return (!usedInBox(x, y, v) && 
           !usedInCol(x, y, v) && 
-          !usedInBox(x, y, v)); }
+          !usedInRow(x, y, v)); 
+}
 
 bool usedInRow(int x, int y, int v) {
   if (v == EMPTY) return false;
   for (int i = 0; i < GS; i++) {
-    if (grid[i][y] == v)
+    if (grid[i][y] == v) {
+      if (state == PLAY) startFlash('r', y, 'r', ERR_FLASH);
       return true;
+    }
   }
   return false;
 }
@@ -374,8 +406,10 @@ bool usedInRow(int x, int y, int v) {
 bool usedInCol(int x, int y, int v) {
   if (v == EMPTY) return false;
   for (int i = 0; i < GS; i++) {
-    if (grid[x][i] == v)
+    if (grid[x][i] == v) {
+      if (state == PLAY) startFlash('c', x, 'r', ERR_FLASH);
       return true;
+    }
   }
   return false;
 }
@@ -388,11 +422,15 @@ bool usedInBox(int x, int y, int v) {
   int xEnd = xStart + boxSize;
   int yStart = y - y % (boxSize);
   int yEnd = yStart + boxSize;
+  int idx = 0;
 
   for (int _x = xStart; _x < xEnd; _x++) {
     for (int _y = yStart; _y < yEnd; _y++) {
-      if (grid[_x][_y] == v)
+      if (grid[_x][_y] == v) {
+        idx = xytobox(x, y);
+        if (state == PLAY) startFlash('b', idx, 'r', ERR_FLASH);
         return true;
+      }
     }
   }
   return false;
@@ -489,7 +527,24 @@ void updateScreen() {
       if (grid[x][y] == EMPTY) {
         printf("\e[2m · \e[0m"); // Dim dot to indicate empty field
       } else {
-        printf(" %d ", grid[x][y]);
+        switch (getColor(x,y)) {
+          case 'r':
+          {
+            printf("\e[31m R \e[0m");
+            break;
+          }
+          case 'y':
+          {
+            printf("\e[33m Y \e[0m");
+            break;
+          }
+          default:
+          {
+            printf(" %d ", grid[x][y]);
+            break;
+          }
+        }
+        
       }
       if ((x + 1) % 3 == 0) {
         if ((x + 1) == GS) {
@@ -529,6 +584,78 @@ void updateScreen() {
       break;
   }
   y = screenChanged? y+1 : -1;
+}
+
+char getColor(int x, int y) {
+  char color = DEF_COLOR;
+  if (flash[4] == DEF_COLOR) return color;
+
+  switch (flash[0]) {
+    case 'r':
+      if (flash[1] == y) {
+        color = flash[4];
+        
+      }
+      break;
+    case 'c':
+      if (flash[1] == x) {
+        color = flash[4];
+      }
+      break;
+    case 'b': 
+      if (flash[1] == xytobox(x,y)) {
+        color = flash[4];
+      }
+      break;
+    default:
+      color = DEF_COLOR;
+      break;
+  }
+  return color;
+}
+
+void doFlash() {
+  if (flash[0] == '0') return;
+  if (flash[3] > 0) {
+    if (clock() - flash_tmr > 250) {
+      flash_tmr = clock();
+      //flash[4] == DEF_COLOR?flash[4] = flash[2]:flash[4] = DEF_COLOR;
+      if (flash[4] == DEF_COLOR) {
+        flash[4] = flash[2];
+      } else {
+        flash[4] = DEF_COLOR;
+      }
+      
+      // char txt[LINE_LENGTH - 1];
+      // sprintf(txt, "flashes left: %d, going to %c", flash[3], flash[4]);
+      // setStatus(txt);
+      
+      flash[3]--;
+      screenChanged = true;
+    } 
+  } else {
+    stopFlash();
+  }
+}
+
+void startFlash(char what, char idx, char color, char count) {
+  if ( (what == 'r' || what == 'c' || what == 'b' ) &&
+       ((idx >= 0) && (idx < GS))                   &&
+       (color == 'r' || color == 'y' || color == DEF_COLOR)) {
+    flash[0] = what;
+    flash[1] = idx;
+    flash[2] = color;
+    flash[3] = count;
+  }
+  screenChanged = true;
+}
+
+void stopFlash() {
+  flash[0] = '0';
+  flash[2] = DEF_COLOR;
+  flash[3] = 0;
+  flash[4] = DEF_COLOR;
+  screenChanged = true;
 }
 
 bool isHotKey(char c) {
