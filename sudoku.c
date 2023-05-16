@@ -90,10 +90,29 @@ void updateScreen();
  */
 void doFlash();
 
+/**
+ * @brief Starts a Flash sequence
+ * 
+ * @param what r(ow), c(olumn), b(ox) or none (0)
+ * @param idx index of row, column or box
+ * @param color y(yellow) or r(red)
+ * @param count nr of flashes, includes off states.
+ */
 void startFlash(char what, char idx, char color, char count);
 
+/**
+ * @brief Stop any currently running flash sequences
+ * 
+ */
 void stopFlash();
 
+/**
+ * @brief Get the current color for coordinates. Depending on flash mode
+ * 
+ * @param x 
+ * @param y 
+ * @return char r(ow), c(olumn), b(ox) or none (0)
+ */
 char getColor(int x, int y);
 
 /******************/
