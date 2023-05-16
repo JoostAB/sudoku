@@ -6,18 +6,19 @@
 #include <windows.h>
 #include <conio.h>
 
-#define GS           9 // GridSize
-#define EMPTY        0
-#define INP_LENGTH   20
-#define LINE_LENGTH  70
+#define GS           9    // GridSize
+#define EMPTY        0    // Value of an empty cell
+#define INP_LENGTH   20   // Max length of input command
+#define LINE_LENGTH  70   // Max length of text line (info or status)
 
-#define clear()      printf("\e[H\033[J")
-#define gotoxy(x, y) printf("\e[%d;%dH", (y), (x))
+#define clear()      printf("\e[H\033[J")           // Clear screen
+#define gotoxy(x, y) printf("\e[%d;%dH", (y), (x))  // Move cursor to location
 
-const int statusLine = 1;
-const int infoLine = 16;
-const int inputLine = infoLine + 1;
+const int statusLine = 1;           // Line number for status text
+const int infoLine = 16;            // Line number for info text
+const int inputLine = infoLine + 1; // Line number for input line
 
+// Enumeration of status machine states
 enum State { 
   NOSTATE,
   START,
