@@ -517,6 +517,9 @@ void updateScreen() {
     inpChanged = false;
     gotoxy(1,inputLine);
     printf(input);
+    for (int i = strlen(input); i < LINE_LENGTH; i++) {
+      putchar(' ');
+    }
   }
 
   if (!screenChanged)
@@ -680,9 +683,16 @@ void stopFlash() {
 bool isHotKey(char c) {
   switch (c)
   {
-  case '\n':
-  case '\r':
+  case '\n':  // Newline
+  case '\r':  // Return (Enter)
     inpEntered = true;
+    break;
+  case '\b':  // Backspace
+    if (inpPos > 0) {
+      inpPos--;
+      input[inpPos] = '\0';
+      inpChanged = true;
+    }
     break;
   case 'H':
     setStatus("Hello world");
