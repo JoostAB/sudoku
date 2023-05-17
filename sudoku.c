@@ -441,13 +441,13 @@ bool usedInBox(int x, int y, int v) {
   int xEnd = xStart + boxSize;
   int yStart = y - y % (boxSize);
   int yEnd = yStart + boxSize;
-  int idx = 0;
+  //int idx = 0;
 
   for (int _x = xStart; _x < xEnd; _x++) {
     for (int _y = yStart; _y < yEnd; _y++) {
       if (grid[_x][_y] == v) {
-        idx = xytobox(x, y);
-        if (state == PLAY) startFlash('b', idx, 'r', ERR_FLASH);
+        //idx = xytobox(x, y);
+        if (state == PLAY) startFlash('b', xytobox(x, y), 'r', ERR_FLASH);
         return true;
       }
     }
