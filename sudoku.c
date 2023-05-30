@@ -256,11 +256,11 @@ int lvl = 0;
 clock_t flash_tmr;  // Flash timer
 
 // Flash status: 
-// - flash[0] = 0 (off), r (row), c (column) or b (block)
-// - flash[1] = nr of row, column or block
-// - flash[2] = color, r = red, y = yellow
-// - flash[3] = nr of flashes left
-// - flash[4] = current color (0 = no color, default)
+// - flash[flash_what] = 0 (off), r (row), c (column) or b (block)
+// - flash[flash_idx] = nr of row, column or block
+// - flash[flash_clr] = color, r = red, y = yellow
+// - flash[flash_cnt] = nr of flashes left
+// - flash[flash_crnt] = current color (0 = no color, default)
 char flash[5] = {'0',0,DEF_COLOR, 0, DEF_COLOR};  	  
 
 const char flash_what = 0;
@@ -268,12 +268,6 @@ const char flash_idx = 1;
 const char flash_clr = 2;
 const char flash_cnt = 3;
 const char flash_crnt = 4;
-
-#define FLASH_WHAT 0
-#define FLASH_IDX 1
-#define FLASH_CLR 2
-#define FLASH_CNT 3
-
 
 const char* doMoveText = "Enter next move in Column-Row-Value format (eg 1a2 or 6g4)";
 
@@ -621,23 +615,23 @@ void updateScreen() {
 
 char getColor(int x, int y) {
   char color = DEF_COLOR;
-  if (flash[4] == DEF_COLOR) return color;
+  if (flash[flash_crnt] == DEF_COLOR) return color;
 
-  switch (flash[0]) {
+  switch (flash[flash_what]) {
     case 'r':
-      if (flash[1] == y) {
-        color = flash[4];
+      if (flash[flash_idx] == y) {
+        color = flash[flash_crnt];
         
       }
       break;
     case 'c':
-      if (flash[1] == x) {
-        color = flash[4];
+      if (flash[flash_idx] == x) {
+        color = flash[flash_crnt];
       }
       break;
     case 'b': 
-      if (flash[1] == xytobox(x,y)) {
-        color = flash[4];
+      if (flash[flash_idx] == xytobox(x,y)) {
+        color = flash[flash_crnt];
       }
       break;
     default:
@@ -648,13 +642,13 @@ char getColor(int x, int y) {
 }
 
 void doFlash() {
-  if (flash[0] == '0') return;
-  if (flash[3] > 0) {
+  if (flash[flash_what] == '0') return;
+  if (flash[flash_cnt] > 0) {
     if (clock() - flash_tmr > 250) {
       flash_tmr = clock();
       
-      flash[4] = (flash[4] == DEF_COLOR?flash[2]:DEF_COLOR);
-      flash[3]--;
+      flash[flash_crnt] = (flash[flash_crnt] == DEF_COLOR?flash[flash_clr]:DEF_COLOR);
+      flash[flash_cnt]--;
 
       screenChanged = true;
     } 
@@ -667,19 +661,19 @@ void startFlash(char what, char idx, char color, char count) {
   if ( (what == 'r' || what == 'c' || what == 'b' ) &&
        ((idx >= 0) && (idx < GS))                   &&
        (color == 'r' || color == 'y' || color == DEF_COLOR)) {
-    flash[0] = what;
-    flash[1] = idx;
-    flash[2] = color;
-    flash[3] = count;
+    flash[flash_what] = what;
+    flash[flash_idx] = idx;
+    flash[flash_clr] = color;
+    flash[flash_cnt] = count;
   }
   screenChanged = true;
 }
 
 void stopFlash() {
-  flash[0] = '0';
-  flash[2] = DEF_COLOR;
-  flash[3] = 0;
-  flash[4] = DEF_COLOR;
+  flash[flash_what] = '0';
+  flash[flash_clr] = DEF_COLOR;
+  flash[flash_cnt] = 0;
+  flash[flash_crnt] = DEF_COLOR;
   screenChanged = true;
 }
 
