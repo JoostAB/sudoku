@@ -263,6 +263,18 @@ clock_t flash_tmr;  // Flash timer
 // - flash[4] = current color (0 = no color, default)
 char flash[5] = {'0',0,DEF_COLOR, 0, DEF_COLOR};  	  
 
+const char flash_what = 0;
+const char flash_idx = 1;
+const char flash_clr = 2;
+const char flash_cnt = 3;
+const char flash_crnt = 4;
+
+#define FLASH_WHAT 0
+#define FLASH_IDX 1
+#define FLASH_CLR 2
+#define FLASH_CNT 3
+
+
 const char* doMoveText = "Enter next move in Column-Row-Value format (eg 1a2 or 6g4)";
 
 /* String buffers */
@@ -531,7 +543,6 @@ void updateScreen() {
   case -1:
     line = 2;
     gotoxy(1, line);
-    //printf("\e[1m    1  2  3   4  5  6   7  8  9            \e[0m\n");
     printf("\e[1;33m    1  2  3   4  5  6   7  8  9            \e[0m\n");
     printf("  ╔═════════╤═════════╤═════════╗          \n");
     line = line + 2;
@@ -552,12 +563,12 @@ void updateScreen() {
         switch (getColor(x,y)) {
           case 'r':
           {
-            printf("\e[31m R \e[0m");
+            printf("\e[31m %d \e[0m", grid[x][y]);
             break;
           }
           case 'y':
           {
-            printf("\e[33m Y \e[0m");
+            printf("\e[33m %d \e[0m", grid[x][y]);
             break;
           }
           default:
@@ -641,18 +652,10 @@ void doFlash() {
   if (flash[3] > 0) {
     if (clock() - flash_tmr > 250) {
       flash_tmr = clock();
-      //flash[4] == DEF_COLOR?flash[4] = flash[2]:flash[4] = DEF_COLOR;
-      if (flash[4] == DEF_COLOR) {
-        flash[4] = flash[2];
-      } else {
-        flash[4] = DEF_COLOR;
-      }
       
-      // char txt[LINE_LENGTH - 1];
-      // sprintf(txt, "flashes left: %d, going to %c", flash[3], flash[4]);
-      // setStatus(txt);
-      
+      flash[4] = (flash[4] == DEF_COLOR?flash[2]:DEF_COLOR);
       flash[3]--;
+
       screenChanged = true;
     } 
   } else {
