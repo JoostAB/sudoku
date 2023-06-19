@@ -1,6 +1,6 @@
 # sudoku
 
-My first Windows C program :)
+My first Windows C game :)
 
 Generates a sudoku puzzle and lets you solve it by entering coordinates and a value for your move.
 
