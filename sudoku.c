@@ -6,31 +6,34 @@
 #include <windows.h>
 #include <conio.h>
 
-#define GS           9    // GridSize
-#define EMPTY        0    // Value of an empty cell
-#define INP_LENGTH   20   // Max length of input command
-#define LINE_LENGTH  70   // Max length of text line (info or status)
-#define ERR_FLASH    10
-#define DEF_COLOR    48  // Default color char '0'
+#define GS           9    /**< GridSize */ 
+#define EMPTY        0    /**< Value of an empty cell */
+#define INP_LENGTH   20   /**< Max length of input command */
+#define LINE_LENGTH  70   /**< Max length of text line (info or status) */
+#define ERR_FLASH    10   /**< Number of times to flash in case of error */
+#define DEF_COLOR    48   /**< Default color char '0' */
 
-#define clear()       printf("\e[H\033[J")           // Clear screen
-#define gotoxy(x, y)  printf("\e[%d;%dH", (y), (x))  // Move cursor to location
-#define xytobox(x, y) ((x/3) + (3*(y/3)))
+#define clear()       printf("\e[H\033[J")           /**< Clear screen */
+#define gotoxy(x, y)  printf("\e[%d;%dH", (y), (x))  /**< Move cursor to location */
+#define xytobox(x, y) ((x/3) + (3*(y/3)))            /**< Return the box of the x-y coordinate */
 
-const int statusLine = 1;           // Line number for status text
-const int infoLine = 16;            // Line number for info text
-const int inputLine = infoLine + 1; // Line number for input line
+const int statusLine = 1;           /**< Line number for status text */
+const int infoLine = 16;            /**< Line number for info text */
+const int inputLine = infoLine + 1; /**< Line number for input line */
 
-// Enumeration of status machine states
+/**
+ * @brief Enumeration of status machine states
+ */
 enum State { 
-  NOSTATE,
-  START,
-  STARTING,
-  CREATE,
-  PLAY,
-  SOLVE, 
-  SOLVED,
-  QUIT} state = START;
+  NOSTATE,  /**< Initial state (none yet) */
+  START,    /**< Start a new game */
+  STARTING, /**< In the process of starting a new game */
+  CREATE,   /**< Create a new game */
+  PLAY,     /**< Playing a game */
+  SOLVE,    /**< In the process of solving a game */
+  SOLVED,   /**< Current game is solved */
+  QUIT      /**< Quit the program */
+} state = START;
 
 /*********************/
 /* Display functions */
@@ -235,49 +238,70 @@ void startGame();
 /**
  * @brief Do the move after all needed checks. Then check for win
  * 
- * @return true Valid move, done
- * @return false Invalid move
+ * @return boolean
+ * @return true - Valid move, done
+ * @return false - Invalid move
  */
 bool doMove();
 
-/* Misc */
+/** 
+ * Checks if the passed char is a hot key
+ */
+bool isHotKey(char c);
+
+/**
+ * The actual main loop
+ * 
+ * Is started from \ref main() after initializeing the program, and is stopped 
+ * if the program \ref state becomes \ref QUIT
+ */
 void loop();
 
 /* Update flags */
-bool inpChanged = false;
-bool inpEntered = false;
-bool statusChanged = false;
-bool infoChanged = false;
-bool screenChanged = true;
+bool inpChanged = false;    /**< Input has changed since last screen update */
+bool inpEntered = false;    /**< Input has been entered */
+bool statusChanged = false; /**< Status has changed since last screen update */
+bool infoChanged = false;   /**< Info has changed since last screen update */
+bool screenChanged = true;  /**< Screen has changed since last screen update */
 
-int grid[GS][GS];
-int lvl = 0;
+int grid[GS][GS]; /**< The grid */
+int lvl = 0;      /**< Current level */
 
-clock_t flash_tmr;  // Flash timer
+clock_t flash_tmr;  /**< Flash timer */
 
-// Flash status: 
-// - flash[flash_what] = 0 (off), r (row), c (column) or b (block)
-// - flash[flash_idx] = nr of row, column or block
-// - flash[flash_clr] = color, r = red, y = yellow
-// - flash[flash_cnt] = nr of flashes left
-// - flash[flash_crnt] = current color (0 = no color, default)
+/** Flash status: 
+ * - flash[flash_what] = 0 (off), r (row), c (column) or b (block)
+ * - flash[flash_idx] = nr of row, column or block
+ * - flash[flash_clr] = color, r = red, y = yellow
+ * - flash[flash_cnt] = nr of flashes left
+ * - flash[flash_crnt] = current color (0 = no color, default)
+ */
 char flash[5] = {'0',0,DEF_COLOR, 0, DEF_COLOR};  	  
 
-const char flash_what = 0;
-const char flash_idx = 1;
-const char flash_clr = 2;
-const char flash_cnt = 3;
-const char flash_crnt = 4;
+const char flash_what = 0; /**< Index of flash[] array, indicating what to flash */
+const char flash_idx = 1;  /**< Index of flash[] array, nr of row, column or box */
+const char flash_clr = 2;  /**< Index of flash[] array, color of flash */
+const char flash_cnt = 3;  /**< Index of flash[] array, number of flashes left to do */
+const char flash_crnt = 4; /**< Index of flash[] array, containing current color */
 
+/**
+ * Text to show when waiting for move 
+ */
 const char* doMoveText = "Enter next move in Column-Row-Value format (eg 1a2 or 6g4)";
 
 /* String buffers */
-char status[LINE_LENGTH];
-char info[LINE_LENGTH];
-char input[INP_LENGTH];
-int inpPos = 0;
+char status[LINE_LENGTH]; /**< Buffer to hold the status text */
+char info[LINE_LENGTH];   /**< Buffer to hold the info text */
+char input[INP_LENGTH];   /**< Buffer to hold the input line */
+int inpPos = 0;           /**< Current position of the cursor on the input line */
 
 
+/**
+ * Main program.
+ * Starts \ref loop() as main loop while status is not QUIT
+ * 
+ * @return int - Exit code
+ */
 int main() {
   // Force console to UTF-8 codepage to proper display field
   SetConsoleOutputCP(CP_UTF8);
@@ -677,6 +701,9 @@ void stopFlash() {
   screenChanged = true;
 }
 
+/** 
+ * Checks if the passed char is a hot key
+ */
 bool isHotKey(char c) {
   switch (c)
   {
